@@ -1,0 +1,21 @@
+[SQLSERVER]
+server = TU_SERVER\INSTANCIA
+database = TU_BASEDATOS
+username = TU_USUARIO
+password = TU_CLAVE
+driver = ODBC Driver 18 for SQL Server
+
+[SAP]
+user = USUARIO_SAP
+passwd = CLAVE_SAP
+ashost = sap.servidor.com
+sysnr = 00
+client = 100
+lang = ES
+
+[DEFAULT]
+awsAccessKeyId = TU_KEY_ID
+awsSecretAccessKey = TU_SECRET
+awsMailFrom = tu_mail@dominio.com
+awsMailTo = destino@dominio.com
+awsRegion = us-west-2
