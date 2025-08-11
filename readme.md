@@ -40,44 +40,4 @@ Una vez que tengas todo configurado, puedes escribir un script de Python para co
 1.  **Crea un archivo de Python** (por ejemplo, `sap_connection.py`).
 2.  **Copia y pega el siguiente código**, reemplazando los datos de ejemplo con tus propias credenciales de SAP.
 
-    ```python
-    from pyrfc import Connection
-
-    try:
-        # Define los parámetros de conexión
-        conn_params = {
-            "ashost": "tu_host_sap",
-            "sysnr": "tu_numero_de_sistema",
-            "client": "tu_cliente_sap",
-            "user": "tu_usuario_sap",
-            "passwd": "tu_contraseña_sap",
-            "lang": "ES"
-        }
-
-        # Establece la conexión
-        connection = Connection(**conn_params)
-        print("Conexión a SAP establecida con éxito.")
-
-        # Ejemplo de llamada a una función BAPI o RFC de SAP
-        # En este caso, obtiene detalles del usuario actual
-        result = connection.call("BAPI_USER_GET_DETAIL", USERNAME="tu_usuario_sap")
-        print("\nDetalles del usuario:")
-        print(f"Nombre de usuario: {result['USERNAME']}")
-        print(f"Nombre completo: {result['FULLNAME']}")
-
-        # Cierra la conexión al finalizar
-        connection.close()
-        print("\nConexión a SAP cerrada.")
-
-    except Exception as e:
-        print(f"Error al conectar a SAP: {e}")
-    ```
-
----
-
-## 4. Ejecutar el script
-
-Guarda el archivo y ejecútalo desde tu terminal:
-
-```bash
-python sap_connection.py
+    
