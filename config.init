@@ -1,9 +1,8 @@
-[SQLSERVER]
-server = TU_SERVER\INSTANCIA
-database = TU_BASEDATOS
-username = TU_USUARIO
-password = TU_CLAVE
-driver = ODBC Driver 18 for SQL Server
+[ORACLE]
+user = TU_USUARIO_ORACLE
+password = TU_CLAVE_ORACLE
+dsn = host:1521/servicio
+
 
 [SAP]
 user = USUARIO_SAP

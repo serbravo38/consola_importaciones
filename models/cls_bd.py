@@ -1,29 +1,19 @@
-import pyodbc
+import oracledb
 import pandas as pd
 
 class clsBD:
-    def __init__(self, server, database, user, password, driver="ODBC Driver 18 for SQL Server"):
-        self.server = server
-        self.database = database
+    def __init__(self, user, password, dsn):
         self.user = user
         self.password = password
-        self.driver = driver
+        self.dsn = dsn
         self.connection = None
 
     def abrir_bd(self):
         try:
-            conn_str = (
-                f"DRIVER={{{self.driver}}};"
-                f"SERVER={self.server};"
-                f"DATABASE={self.database};"
-                f"UID={self.user};"
-                f"PWD={self.password};"
-                "TrustServerCertificate=yes;"
-            )
-            self.connection = pyodbc.connect(conn_str)
+            self.connection = oracledb.connect(user=self.user, password=self.password, dsn=self.dsn)
             return self.connection
         except Exception as e:
-            print(f"Error al conectar a SQL Server: {e}")
+            print(f"Error al conectar a la BD Oracle: {e}")
             return None
 
     def cerrar_bd(self):
@@ -35,7 +25,7 @@ class clsBD:
         if not self.connection:
             raise Exception("No hay conexión abierta")
         with self.connection.cursor() as cursor:
-            cursor.execute(sql, params or [])
+            cursor.execute(sql, params or {})
             try:
                 cols = [desc[0] for desc in cursor.description]
                 rows = cursor.fetchall()

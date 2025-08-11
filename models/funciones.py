@@ -11,22 +11,20 @@ class Funciones:
     def fnc_carga_oc(self, desde, hasta):
         result = ExecSQLResult()
         try:
-            # 1. Traer importaciones desde SAP (o mock)
+            # 1. Traer importaciones desde SAP
             imp = Importaciones()
             inf_import = imp.fnc_importaciones_sap(desde, hasta)
             if inf_import.cod_error != 0:
                 raise Exception(f"Error al cargar importaciones desde SAP: {inf_import.des_error}")
 
-            # 2. Abrir conexión SQL Server (desde config.ini)
+            # 2. Abrir conexión Oracle (desde config.ini)
             config = configparser.ConfigParser()
             config.read('config.ini')
-            sqlcfg = config['SQLSERVER']
+            ora_cfg = config['ORACLE']
             bd = clsBD(
-                server=sqlcfg['server'],
-                database=sqlcfg['database'],
-                user=sqlcfg['username'],
-                password=sqlcfg['password'],
-                driver=sqlcfg.get('driver', "ODBC Driver 18 for SQL Server")
+                user=ora_cfg['user'],
+                password=ora_cfg['password'],
+                dsn=ora_cfg['dsn']
             )
             conn = bd.abrir_bd()
             if not conn:
@@ -37,70 +35,82 @@ class Funciones:
                 # CABECERA
                 for _, row in inf_import.dtZImportaciones_Cab.iterrows():
                     pedido = row["EBELN"].strip()
-                    cursor.execute("SELECT 1 FROM ROS_IMPORTACIONES_CAB WHERE NROPEDIDO = ?", pedido)
+                    cursor.execute("SELECT 1 FROM ROS_IMPORTACIONES_CAB WHERE NROPEDIDO = :pedido", {"pedido": pedido})
                     if cursor.fetchone() is None:
+                        # IMPORTANTE: verificar los campos en la tabla ROS_IMPORTACIONES_CAB
                         sql_insert = """
                         INSERT INTO ROS_IMPORTACIONES_CAB (
                             NROPEDIDO, CAMPO2, MONTO, DENOMINACION, FECHAPEDIDO, WAERS, RLWRT,
                             FLIBERACION, WKURS, EKORG, ZZPTOEMBA, ERNAM
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ) VALUES (
+                            :pedido, :campo2, :monto, :denominacion, :fechapedido, :waers, :rlwrt,
+                            :fliberacion, :wkurs, :ekorg, :zptoemba, :ernam
+                        )
                         """
-                        valores = [
-                            pedido,
-                            pedido[-5:],
-                            0,
-                            self.retorna_origen(row.get('DENOMINACION', '').upper().strip()),
-                            self.formatea_fecha(row["BEDAT"]),
-                            row.get('WAERS', '').strip(),
-                            float(row.get('RLWRT', 0)),
-                            self.formatea_fecha(row.get("FLIBERACION")),
-                            float(row.get('WKURS', 0)),
-                            row.get('EKORG', '').strip(),
-                            row.get('ZZPTOEMBA', '').strip(),
-                            row.get('ERNAM', '').strip()
-                        ]
+                        valores = {
+                            "pedido": pedido,
+                            "campo2": pedido[-5:],
+                            "monto": 0,
+                            "denominacion": self.retorna_origen(row.get('DENOMINACION', '').upper().strip()),
+                            "fechapedido": self.formatea_fecha(row["BEDAT"]),
+                            "waers": row.get('WAERS', '').strip(),
+                            "rlwrt": float(row.get('RLWRT', 0)),
+                            "fliberacion": self.formatea_fecha(row.get("FLIBERACION")),
+                            "wkurs": float(row.get('WKURS', 0)),
+                            "ekorg": row.get('EKORG', '').strip(),
+                            "zptoemba": row.get('ZZPTOEMBA', '').strip(),
+                            "ernam": row.get('ERNAM', '').strip()
+                        }
                         cursor.execute(sql_insert, valores)
                     elif self.is_date(row.get('FLIBERACION', "")):
                         sql_update = """
                         UPDATE ROS_IMPORTACIONES_CAB
-                        SET FLIBERACION = ?, ORIGEN = ?, MONTO_NETO = ?
-                        WHERE NROPEDIDO = ?
+                           SET FLIBERACION = :fliberacion,
+                               ORIGEN = :origen,
+                               MONTO_NETO = :monto
+                         WHERE NROPEDIDO = :pedido
                         """
                         cursor.execute(
                             sql_update,
-                            self.formatea_fecha(row["FLIBERACION"]),
-                            self.retorna_origen(row.get('DENOMINACION', '').upper().strip()),
-                            float(row.get("RLWRT", 0)),
-                            pedido
+                            {
+                                "fliberacion": self.formatea_fecha(row["FLIBERACION"]),
+                                "origen": self.retorna_origen(row.get('DENOMINACION', '').upper().strip()),
+                                "monto": float(row.get("RLWRT", 0)),
+                                "pedido": pedido
+                            }
                         )
                 # DETALLE
                 for _, row in inf_import.dtZImportaciones_Det.iterrows():
                     pedido, posicion = row["EBELN"].strip(), row["EBELP"]
                     cursor.execute(
-                        "SELECT 1 FROM ROS_IMPORTACIONES_DET WHERE NROPEDIDO = ? AND POSICION = ?",
-                        (pedido, posicion))
+                        "SELECT 1 FROM ROS_IMPORTACIONES_DET WHERE NROPEDIDO = :pedido AND POSICION = :posicion",
+                        {"pedido": pedido, "posicion": posicion}
+                    )
                     if cursor.fetchone():
                         cursor.execute(
-                            "DELETE FROM ROS_IMPORTACIONES_DET WHERE NROPEDIDO = ? AND POSICION = ?",
-                            (pedido, posicion))
+                            "DELETE FROM ROS_IMPORTACIONES_DET WHERE NROPEDIDO = :pedido AND POSICION = :posicion",
+                            {"pedido": pedido, "posicion": posicion}
+                        )
                     sql_insert_det = """
                         INSERT INTO ROS_IMPORTACIONES_DET (
                             NROPEDIDO, POSICION, TXZ01, MATNR, MAKTX, WERKS, LGORT, MENGE, MEINS, NETPR, NETWR
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ) VALUES (
+                            :pedido, :posicion, :txz01, :matnr, :maktx, :werks, :lgort, :menge, :meins, :netpr, :netwr
+                        )
                     """
-                    valores_det = [
-                        pedido,
-                        posicion,
-                        row.get('TXZ01', '').replace("'", "''").strip(),
-                        row.get('MATNR', '').strip(),
-                        row.get('MAKTX', '').replace("'", "''").strip(),
-                        row.get('WERKS', '').strip(),
-                        row.get('LGORT', '').strip(),
-                        float(row.get('MENGE', 0)),
-                        row.get('MEINS', '').strip(),
-                        float(row.get('NETPR', 0)),
-                        float(row.get('NETWR', 0)),
-                    ]
+                    valores_det = {
+                        "pedido": pedido,
+                        "posicion": posicion,
+                        "txz01": row.get('TXZ01', '').replace("'", "''").strip(),
+                        "matnr": row.get('MATNR', '').strip(),
+                        "maktx": row.get('MAKTX', '').replace("'", "''").strip(),
+                        "werks": row.get('WERKS', '').strip(),
+                        "lgort": row.get('LGORT', '').strip(),
+                        "menge": float(row.get('MENGE', 0)),
+                        "meins": row.get('MEINS', '').strip(),
+                        "netpr": float(row.get('NETPR', 0)),
+                        "netwr": float(row.get('NETWR', 0)),
+                    }
                     cursor.execute(sql_insert_det, valores_det)
                 conn.commit()
 
