@@ -1,8 +1,8 @@
 [ORACLE]
-user = TU_USUARIO_ORACLE
-password = TU_CLAVE_ORACLE
-dsn = host:1521/servicio
-
+user = SYSADM
+password = techno3  
+dsn = 172.16.2.37:1521/ROSENDS
+instant_client_path = C:\oracle\instantclient_23_8
 
 [SAP]
 user = USUARIO_SAP
